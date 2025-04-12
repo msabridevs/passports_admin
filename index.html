@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>طلبات الأحوال المدنية</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      direction: rtl;
+      text-align: right;
+    }
+    label, input, textarea, button, select {
+      display: block;
+      margin-bottom: 10px;
+      width: 100%;
+      max-width: 100%;
+      font-size: 20px;
+    }
+    input, textarea, select {
+      padding: 10px;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 20px;
+      border: 1px solid #ccc;
+      background: #f9f9f9;
+      font-size: 18px;
+      min-height: 400px;
+      direction: rtl;
+      text-align: right;
+    }
+    #app-section { display: none; }
+    .flex-container {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .panel {
+      flex: 1 1 400px;
+      min-width: 300px;
+      max-width: 100%;
+    }
+    textarea#notes {
+      font-size: 18px;
+      height: 60px;
+      resize: vertical;
+    }
+    .qr-img {
+      margin-top: 20px;
+      width: 180px;
+      height: 180px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .ltr-link {
+      direction: ltr;
+      text-align: center;
+      font-size: 16px;
+      word-break: break-word;
+      margin-top: 10px;
+    }
+    #status-select {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h2>طلبات الجوازات ووثائق السفر والجنسية</h2>
+
+  <div id="auth-section">
+    <label>البريد الإلكتروني:</label>
+    <input type="email" id="email" />
+    <label>كلمة المرور:</label>
+    <input type="password" id="password" />
+    <button id="login-btn">تسجيل الدخول</button>
+  </div>
+
+  <div id="app-section">
+    <button id="logout-btn">تسجيل الخروج</button>
+    <div class="flex-container">
+      <div class="panel">
+        <h3>طلب جديد</h3>
+        <label>نوع المعاملة:</label>
+        <select id="transaction-type">
+          <option value="جواز سفر">جواز سفر</option>
+          <option value="وثيقة سفر">وثيقة سفر</option>
+          <option value="بحث الجنسية">بحث الجنسية</option>
+          <option value="الاذن بالتجنس مع الاحتفاظ بالجنسية المصرية">الاذن بالتجنس مع الاحتفاظ بالجنسية المصرية</option>
+          <option value="الاذن بالتجنس مع عدم الاحتفاظ بالجنسية المصرية">الاذن بالتجنس مع عدم الاحتفاظ بالجنسية المصرية</option>
+          <option value="استرداد الجنسية">استرداد الجنسية</option>
+          <option value="إفادة">إفادة</option>
+          <option value="أخرى">أخرى</option>
+        </select>
+        <label>اسم مقدم الطلب:</label>
+        <input type="text" id="name" dir="rtl" />
+        <button id="submit-btn">تسجيل الطلب</button>
+        <div id="result-section">
+          <div class="result" id="result"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>تحديث الحالة</h3>
+        <label>رقم الطلب:</label>
+        <input type="text" id="existing-number" />
+        <label>اختر الحالة:</label>
+        <select id="status-select">
+          <option value="وردت المعاملة. رجاء إحضار الايصال والحضور للاستلام خلال المواعيد المقررة">وردت المعاملة. رجاء إحضار الايصال والحضور للاستلام خلال المواعيد المقررة</option>
+          <option value="مطلوب استيفاء">مطلوب استيفاء</option>
+        </select>
+        <button id="update-btn">تحديث</button>
+        <label style="margin-top: 5px;">ملاحظات (اختياري):</label>
+        <textarea id="notes" rows="3" dir="rtl"></textarea>
+        <div class="result" id="update-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://esbgozuigjdavcxiaxon.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzYmdvenVpZ2pkYXZjeGlheG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQyMjU4NzUsImV4cCI6MjA1OTgwMTg3NX0.OiOH_0ZcTUPu6oMGILsq5oqm1FdCDBvzcHozs-4DNY0';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    document.getElementById('login-btn').onclick = async () => {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        alert('خطأ في تسجيل الدخول: ' + error.message);
+        return;
+      }
+      document.getElementById('auth-section').style.display = 'none';
+      document.getElementById('app-section').style.display = 'block';
+    };
+
+    document.getElementById('logout-btn').onclick = async () => {
+      await supabase.auth.signOut();
+      location.reload();
+    };
+
+    async function generateUniqueNumber() {
+      const { data } = await supabase.from('civil_status').select('number');
+      const existing = new Set(data.map(row => row.number));
+      let number;
+      do {
+        number = String(Math.floor(10000 + Math.random() * 90000));
+      } while (existing.has(number));
+      return number;
+    }
+
+    function resetForm() {
+      document.getElementById('name').value = '';
+      document.getElementById('notes').value = '';
+      document.getElementById('transaction-type').selectedIndex = 0;
+      document.getElementById('existing-number').value = '';
+      document.getElementById('status-select').selectedIndex = 0;
+    }
+
+    document.getElementById('submit-btn').onclick = async () => {
+      const name = document.getElementById('name').value.trim();
+      const notes = document.getElementById('notes').value.trim();
+      const transaction = document.getElementById('transaction-type').value;
+      if (!name) return alert("يرجى إدخال الاسم.");
+
+      const number = await generateUniqueNumber();
+      const { error: insertError } = await supabase.from('civil_status').insert({ number, status: "قيد الفحص", notes });
+      if (insertError) return alert("خطأ أثناء الإدخال: " + insertError.message);
+
+      const { data } = await supabase.from('civil_status').select('*').eq('number', number).single();
+      const dateOnly = new Date(data.created_at).toLocaleDateString('ar-EG');
+
+      const resultHTML = `
+        نوع المعاملة -  ${transaction}<br>
+        اسم مقدم الطلب -  ${name}<br>
+        رقم الطلب  ${data.number}<br>
+        الحالة  - ${data.status}<br>
+        الملاحظات  - ${data.notes || "لا توجد"}<br>
+        التاريخ  ${dateOnly}<br>
+        <br>
+        <strong>لمتابعة موقف الطلب يرجى التحقق برقم الطلب (المكون من خمسة أعداد باللغة الانجليزية) فى القسم المخصص على موقع البعثة</strong><br>
+        <canvas id="qr-canvas" class="qr-img"></canvas>
+        <div class="ltr-link">https://www.egyptconsulate-frankfurt.de/</div>
+      `;
+
+      document.getElementById('result').innerHTML = resultHTML;
+
+      setTimeout(() => {
+        new QRious({
+          element: document.getElementById('qr-canvas'),
+          value: 'https://www.egyptconsulate-frankfurt.de/',
+          size: 180
+        });
+
+        const element = document.getElementById("result-section");
+        const safeName = name.replace(/[^a-zA-Z0-9_\-ء-ي]/g, "_");
+
+        html2pdf().set({
+          filename: `${safeName}_${transaction}_طلب.pdf`,
+          margin: 10,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        }).from(element).save().then(() => {
+          resetForm();
+        });
+      }, 0);
+    };
+
+    document.getElementById('update-btn').onclick = async () => {
+      const number = document.getElementById('existing-number').value.trim();
+      const status = document.getElementById('status-select').value;
+      const updateNotes = document.getElementById('notes').value.trim();
+      if (!number) return alert('أدخل رقم الطلب');
+
+      const { data, error: checkError } = await supabase.from('civil_status').select('id').eq('number', number);
+      if (checkError || !data || data.length === 0) {
+        document.getElementById('update-result').innerHTML = '<span style="color:red">❌ لم يتم العثور على رقم الطلب</span>';
+        return;
+      }
+
+      const { error } = await supabase.from('civil_status').update({ status, notes: updateNotes }).eq('number', number);
+      if (error) return alert('خطأ: ' + error.message);
+
+      document.getElementById('update-result').innerText = `✅ تم تحديث الحالة إلى: ${status}`;
+      resetForm();
+    };
+  </script>
+</body>
+</html>
