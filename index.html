@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>طلبات الأحوال المدنية</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>طلبات الجوازات ووثائق السفر والجنسية</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
@@ -18,7 +18,6 @@
       display: block;
       margin-bottom: 10px;
       width: 100%;
-      max-width: 100%;
       font-size: 20px;
     }
     input, textarea, select {
@@ -31,8 +30,6 @@
       background: #f9f9f9;
       font-size: 18px;
       min-height: 400px;
-      direction: rtl;
-      text-align: right;
     }
     #app-section { display: none; }
     .flex-container {
@@ -43,7 +40,6 @@
     .panel {
       flex: 1 1 400px;
       min-width: 300px;
-      max-width: 100%;
     }
     textarea#notes {
       font-size: 18px;
@@ -64,9 +60,6 @@
       font-size: 16px;
       word-break: break-word;
       margin-top: 10px;
-    }
-    #status-select {
-      margin-bottom: 5px;
     }
   </style>
 </head>
@@ -100,9 +93,7 @@
         <label>اسم مقدم الطلب:</label>
         <input type="text" id="name" dir="rtl" />
         <button id="submit-btn">تسجيل الطلب</button>
-        <div id="result-section">
-          <div class="result" id="result"></div>
-        </div>
+        <div id="result-section"><div class="result" id="result"></div></div>
       </div>
       <div class="panel">
         <h3>تحديث الحالة</h3>
@@ -114,11 +105,13 @@
           <option value="مطلوب استيفاء">مطلوب استيفاء</option>
         </select>
         <button id="update-btn">تحديث</button>
-        <label style="margin-top: 5px;">ملاحظات (اختياري):</label>
+        <label>ملاحظات (اختياري):</label>
         <textarea id="notes" rows="3" dir="rtl"></textarea>
         <div class="result" id="update-result"></div>
       </div>
     </div>
+    <br>
+    <button id="delete-all-btn" style="color: red; font-weight: bold;">🗑 حذف جميع الطلبات</button>
   </div>
 
   <script>
@@ -129,11 +122,8 @@
     document.getElementById('login-btn').onclick = async () => {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        alert('خطأ في تسجيل الدخول: ' + error.message);
-        return;
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return alert('خطأ في تسجيل الدخول: ' + error.message);
       document.getElementById('auth-section').style.display = 'none';
       document.getElementById('app-section').style.display = 'block';
     };
@@ -168,8 +158,8 @@
       if (!name) return alert("يرجى إدخال الاسم.");
 
       const number = await generateUniqueNumber();
-      const { error: insertError } = await supabase.from('passports_nationality').insert({ number, status: "قيد الفحص", notes });
-      if (insertError) return alert("خطأ أثناء الإدخال: " + insertError.message);
+      const { error } = await supabase.from('passports_nationality').insert({ number, status: "قيد الفحص", notes });
+      if (error) return alert("خطأ أثناء الإدخال: " + error.message);
 
       const { data } = await supabase.from('passports_nationality').select('*').eq('number', number).single();
       const dateOnly = new Date(data.created_at).toLocaleDateString('ar-EG');
@@ -205,9 +195,7 @@
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: { scale: 2, useCORS: true },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        }).from(element).save().then(() => {
-          resetForm();
-        });
+        }).from(element).save().then(resetForm);
       }, 0);
     };
 
@@ -228,6 +216,34 @@
 
       document.getElementById('update-result').innerText = `✅ تم تحديث الحالة إلى: ${status}`;
       resetForm();
+    };
+
+    // 🗑 Delete All Button Logic
+    document.getElementById('delete-all-btn').onclick = async () => {
+      const confirmPhrase = prompt("⚠️ هل أنت متأكد؟ اكتب: 'أوافق على حذف كل الطلبات'");
+      if (confirmPhrase !== 'أوافق على حذف كل الطلبات') {
+        alert("تم الإلغاء. لم يتم حذف أي شيء.");
+        return;
+      }
+
+      const { data: rows, error: fetchError } = await supabase.from('passports_nationality').select('id');
+      if (fetchError || !rows) {
+        alert('حدث خطأ أثناء محاولة الحذف.');
+        return;
+      }
+
+      if (rows.length === 0) {
+        alert('لا توجد طلبات لحذفها.');
+        return;
+      }
+
+      const ids = rows.map(row => row.id);
+      const { error: deleteError } = await supabase.from('passports_nationality').delete().in('id', ids);
+      if (deleteError) {
+        alert('حدث خطأ أثناء حذف الطلبات.');
+      } else {
+        alert('✅ تم حذف جميع الطلبات بنجاح.');
+      }
     };
   </script>
 </body>
