@@ -144,7 +144,7 @@
     };
 
     async function generateUniqueNumber() {
-      const { data } = await supabase.from('civil_status').select('number');
+      const { data } = await supabase.from('passports_nationality').select('number');
       const existing = new Set(data.map(row => row.number));
       let number;
       do {
@@ -168,10 +168,10 @@
       if (!name) return alert("يرجى إدخال الاسم.");
 
       const number = await generateUniqueNumber();
-      const { error: insertError } = await supabase.from('civil_status').insert({ number, status: "قيد الفحص", notes });
+      const { error: insertError } = await supabase.from('passports_nationality').insert({ number, status: "قيد الفحص", notes });
       if (insertError) return alert("خطأ أثناء الإدخال: " + insertError.message);
 
-      const { data } = await supabase.from('civil_status').select('*').eq('number', number).single();
+      const { data } = await supabase.from('passports_nationality').select('*').eq('number', number).single();
       const dateOnly = new Date(data.created_at).toLocaleDateString('ar-EG');
 
       const resultHTML = `
@@ -217,13 +217,13 @@
       const updateNotes = document.getElementById('notes').value.trim();
       if (!number) return alert('أدخل رقم الطلب');
 
-      const { data, error: checkError } = await supabase.from('civil_status').select('id').eq('number', number);
+      const { data, error: checkError } = await supabase.from('passports_nationality').select('id').eq('number', number);
       if (checkError || !data || data.length === 0) {
         document.getElementById('update-result').innerHTML = '<span style="color:red">❌ لم يتم العثور على رقم الطلب</span>';
         return;
       }
 
-      const { error } = await supabase.from('civil_status').update({ status, notes: updateNotes }).eq('number', number);
+      const { error } = await supabase.from('passports_nationality').update({ status, notes: updateNotes }).eq('number', number);
       if (error) return alert('خطأ: ' + error.message);
 
       document.getElementById('update-result').innerText = `✅ تم تحديث الحالة إلى: ${status}`;
