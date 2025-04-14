@@ -101,12 +101,24 @@
         <input type="text" id="existing-number" />
         <label>اختر الحالة:</label>
         <select id="status-select">
-          <option value="وردت المعاملة. رجاء إحضار الايصال والحضور للاستلام خلال المواعيد المقررة">وردت المعاملة. رجاء إحضار الايصال ومستند الهوية والإقامة والحضور للاستلام خلال المواعيد الرسمية المعلنة</option>
+          <option value="وردت المعاملة. رجاء إحضار الايصال والحضور للاستلام خلال المواعيد المقررة">
+            وردت المعاملة. رجاء إحضار الايصال ومستند الهوية والإقامة والحضور للاستلام خلال المواعيد الرسمية المعلنة
+          </option>
           <option value="مطلوب استيفاء">مطلوب استيفاء</option>
+          <option value="عدم موافقة">عدم موافقة</option>
+          <option value="قيد الفحص">قيد الفحص</option>
+          <option value="تم التسليم">تم التسليم</option>
+          <option value="تم التسليم بالبريد المسجل">تم التسليم بالبريد المسجل</option>
+          <option value="تم التسليم (بحضور مقدم الطلب شخصياً)">تم التسليم (بحضور مقدم الطلب شخصياً)</option>
         </select>
         <button id="update-btn">تحديث</button>
         <label>ملاحظات (اختياري):</label>
         <textarea id="notes" rows="3" dir="rtl"></textarea>
+
+        <label>حذف طلب برقم محدد:</label>
+        <input type="text" id="delete-number" placeholder="أدخل رقم الطلب للحذف" />
+        <button id="delete-one-btn" style="color: red;">🗑 حذف الطلب المحدد</button>
+
         <div class="result" id="update-result"></div>
       </div>
     </div>
@@ -149,6 +161,7 @@
       document.getElementById('transaction-type').selectedIndex = 0;
       document.getElementById('existing-number').value = '';
       document.getElementById('status-select').selectedIndex = 0;
+      document.getElementById('delete-number').value = '';
     }
 
     document.getElementById('submit-btn').onclick = async () => {
@@ -218,7 +231,29 @@
       resetForm();
     };
 
-    // 🗑 Delete All Button Logic
+    document.getElementById('delete-one-btn').onclick = async () => {
+      const number = document.getElementById('delete-number').value.trim();
+      if (!number) return alert("يرجى إدخال رقم الطلب.");
+
+      const confirmDelete = confirm(`هل أنت متأكد أنك تريد حذف الطلب رقم ${number}؟`);
+      if (!confirmDelete) return;
+
+      const { data, error: findError } = await supabase.from('passports_nationality').select('id').eq('number', number);
+      if (findError || !data || data.length === 0) {
+        alert("❌ لم يتم العثور على الطلب.");
+        return;
+      }
+
+      const id = data[0].id;
+      const { error: deleteError } = await supabase.from('passports_nationality').delete().eq('id', id);
+      if (deleteError) {
+        alert("حدث خطأ أثناء الحذف.");
+      } else {
+        alert("✅ تم حذف الطلب بنجاح.");
+        document.getElementById('delete-number').value = '';
+      }
+    };
+
     document.getElementById('delete-all-btn').onclick = async () => {
       const confirmPhrase = prompt("⚠️ هل أنت متأكد؟ اكتب: 'أوافق على حذف كل الطلبات'");
       if (confirmPhrase !== 'أوافق على حذف كل الطلبات') {
