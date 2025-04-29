@@ -112,8 +112,13 @@
           <option value="تم التسليم (بحضور مقدم الطلب شخصياً)">تم التسليم (بحضور مقدم الطلب شخصياً)</option>
         </select>
         <button id="update-btn">تحديث</button>
-        <label>ملاحظات (اختياري):</label>
-        <textarea id="notes" rows="3" dir="rtl"></textarea>
+        <label for="notes">ملاحظات (اختياري):</label>
+        <input list="notes-options" id="notes" name="notes" dir="rtl" placeholder="اختر أو اكتب ملاحظة" />
+             <datalist id="notes-options">
+        <option value="اهلا رمضان">
+             <option value="اهلا بالعيد">
+             <option value="بحب السيما">
+         </datalist>
 
         <label>حذف طلب برقم محدد:</label>
         <input type="text" id="delete-number" placeholder="أدخل رقم الطلب للحذف" />
